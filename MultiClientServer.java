@@ -34,19 +34,17 @@ public class MultiClientServer {
                 // Old Client Reading Data
                 if (key.isReadable()) {
                     var client = (SocketChannel) key.channel();
-                    if (client == null)
-                        continue;
-
+                    var remoteAddr = client.getRemoteAddress().toString();
                     try {
-                        ByteBuffer b = map.get(client.getRemoteAddress().toString()).buf;
+                        ByteBuffer b = map.get(remoteAddr).buffer;
                         var readBytes = client.read(b);
                         if (readBytes == -1) {
                             continue;
                         }
-                        map.get(client.getRemoteAddress().toString()).constructResponseBuffer();
+                        map.get(remoteAddr).constructResponseBuffer(readBytes);
                         key.interestOps(SelectionKey.OP_WRITE);
                     } catch (Exception e) {
-                        map.remove(client.getRemoteAddress().toString());
+                        map.remove(remoteAddr);
                         client.close();
                     }
                 }
@@ -54,15 +52,15 @@ public class MultiClientServer {
                 try {
                     if (key.isWritable()) {
                         var client = (SocketChannel) key.channel();
-                        if (client == null)
-                            continue;
+                        var remoteAddr = client.getRemoteAddress().toString();
                         try {
-                            ByteBuffer b = map.get(client.getRemoteAddress().toString()).buf;
+                            ByteBuffer b = map.get(remoteAddr).buffer;
+                            client.write(ByteBuffer.wrap(b.array(), 0, map.get(remoteAddr).bufferLength + 4));
                             client.write(b);
                             key.interestOps(SelectionKey.OP_READ);
                             b.clear();
                         } catch (Exception e) {
-                            map.remove(client.getRemoteAddress().toString());
+                            map.remove(remoteAddr);
                             client.close();
                         }
                     }

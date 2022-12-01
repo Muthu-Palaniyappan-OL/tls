@@ -1,21 +1,33 @@
 import java.net.*;
-import java.nio.*;
 import java.nio.channels.*;
+import java.nio.*;
 
 public class Main {
   public static void main(String[] args) throws Exception {
     var sock = SocketChannel.open();
     sock.connect(new InetSocketAddress("localhost", 8080));
-    ByteBuffer buf = ByteBuffer.allocate(16000);
 
-    buf.put((byte) 127).rewind();
-    sock.write(buf);
+    var t = new TlsState();
+    t.buffer.clear();
 
-    buf.flip();
+    int size = t.recordHeader(t.buffer, b2 -> {
+      return t.handshakeHeader(b2, b1 -> {
+        return t.extensions(b1, b -> {
+          return t.tls13version(b);
+        }, b -> {
+          return t.keyShare(b);
+        });
+      });
+    });
 
-    sock.read(buf);
-    buf.rewind();
+    // t.printBuffer(size);
+    sock.write(ByteBuffer.wrap(t.buffer.array(), 0, size + 4));
 
-    System.out.println(buf.get());
+    t.buffer.clear();
+    sock.read(t.buffer);
+
+    t.buffer.flip();
+
+    System.out.println(t.buffer.get());
   }
 }
