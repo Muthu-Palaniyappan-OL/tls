@@ -13,7 +13,6 @@ public class MultiClientServer {
         serverSocket.configureBlocking(false);
         serverSocket.bind(new InetSocketAddress("localhost", PORT));
         serverSocket.register(selector, SelectionKey.OP_ACCEPT);
-        var buf = ByteBuffer.allocate(1024);
         while (true) {
             selector.select();
             var selectedKeys = selector.selectedKeys().iterator();
