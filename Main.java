@@ -10,12 +10,12 @@ public class Main {
     var t = new TlsState();
     t.buffer.clear();
 
-    int size = t.recordHeader(t.buffer, b2 -> {
-      return t.handshakeHeader(b2, b1 -> {
+    int size = t.clientHandshakeRecordHeader(t.buffer, b2 -> {
+      return t.clientHandshakeHeader(b2, b1 -> {
         return t.extensions(b1, b -> {
-          return t.tls13version(b);
+          return t.clientTls13version(b);
         }, b -> {
-          return t.keyShare(b);
+          return t.clientKeyShare(b);
         });
       });
     });
