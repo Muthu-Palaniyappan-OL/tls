@@ -1,25 +1,21 @@
-import java.util.Arrays;
+import java.net.*;
+import java.nio.*;
+import java.nio.channels.*;
 
 public class Main {
   public static void main(String[] args) throws Exception {
-    TlsState t = new TlsState();
-    System.out.println(Arrays.toString(t.getSessionId()));
-    TlsState t1 = new TlsState();
-    System.out.println(Arrays.toString(t1.getSessionId()));
+    var sock = SocketChannel.open();
+    sock.connect(new InetSocketAddress("localhost", 8080));
+    ByteBuffer buf = ByteBuffer.allocate(16000);
 
-    var muthuTlsState = new X25519();
-    var kumaranTlsState = new X25519();
-    kumaranTlsState.deriveSharedKey(muthuTlsState.getPublicKey());
-    muthuTlsState.deriveSharedKey(kumaranTlsState.getPublicKey());
+    buf.put((byte) 127).rewind();
+    sock.write(buf);
 
-    byte[] mainData = "Muthu".getBytes();
-    System.out.println("Original Data: " + Arrays.toString(mainData));
+    buf.flip();
 
-    byte[] encryptedData = muthuTlsState.encrypt(mainData);
-    System.out.println("Encrypted Data: " + Arrays.toString(encryptedData));
+    sock.read(buf);
+    buf.rewind();
 
-    byte[] decryptData = kumaranTlsState.decrypt(encryptedData);
-
-    System.out.println("Decrypted Data: " + Arrays.toString(decryptData));
+    System.out.println(buf.get());
   }
 }

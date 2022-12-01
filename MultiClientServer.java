@@ -29,7 +29,7 @@ public class MultiClientServer {
                     map.put(client.getRemoteAddress().toString(), new TlsState());
                     client.configureBlocking(false);
                     client.register(selector, SelectionKey.OP_READ);
-                    System.out.println("New Connection: " + client);
+                    System.out.println("New Connection: " + client.getRemoteAddress());
                 }
 
                 // Old Client Reading Data
