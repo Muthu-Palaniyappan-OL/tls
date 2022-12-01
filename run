@@ -1,0 +1,20 @@
+#!/bin/bash
+
+if [[ $1 = "clean" ]]
+then
+    rm *.class
+    exit
+fi
+
+javac *.java
+
+if [[ $1 = "Server" ]]
+then
+    java MultiClientServer
+fi
+
+
+if [[ $1 = "Client" ]]
+then
+    java Main
+fi

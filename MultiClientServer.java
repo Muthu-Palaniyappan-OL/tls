@@ -1,9 +1,11 @@
 import java.net.*;
 import java.nio.*;
 import java.nio.channels.*;
+import java.util.*;
 
 public class MultiClientServer {
     private static final int PORT = 8080;
+    private static HashMap<String, TlsState> map = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
         var selector = Selector.open();
@@ -24,6 +26,7 @@ public class MultiClientServer {
                     var client = serverSocket.accept();
                     if (client == null)
                         continue;
+                    map.put(client.getRemoteAddress().toString(), new TlsState());
                     client.configureBlocking(false);
                     client.register(selector, SelectionKey.OP_READ);
                     System.out.println("New Connection: " + client);
@@ -36,14 +39,15 @@ public class MultiClientServer {
                         continue;
 
                     try {
-                        buf.clear();
-                        var readBytes = client.read(buf);
+                        ByteBuffer b = map.get(client.getRemoteAddress().toString()).buf;
+                        var readBytes = client.read(b);
                         if (readBytes == -1) {
-                            System.out.println("Data Over");
                             continue;
                         }
+                        map.get(client.getRemoteAddress().toString()).constructResponseBuffer();
                         key.interestOps(SelectionKey.OP_WRITE);
                     } catch (Exception e) {
+                        map.remove(client.getRemoteAddress().toString());
                         client.close();
                     }
                 }
@@ -54,9 +58,12 @@ public class MultiClientServer {
                         if (client == null)
                             continue;
                         try {
-                            client.write(ByteBuffer.wrap("Muthu\n".getBytes()));
+                            ByteBuffer b = map.get(client.getRemoteAddress().toString()).buf;
+                            client.write(b);
                             key.interestOps(SelectionKey.OP_READ);
+                            b.clear();
                         } catch (Exception e) {
+                            map.remove(client.getRemoteAddress().toString());
                             client.close();
                         }
                     }
