@@ -21,7 +21,8 @@ public class Main {
     });
 
     // t.printBuffer(size);
-    sock.write(ByteBuffer.wrap(t.buffer.array(), 0, size + 4));
+    System.out.println(size);
+    sock.write(ByteBuffer.wrap(t.buffer.array(), 0, size));
 
     t.buffer.clear();
     sock.read(t.buffer);

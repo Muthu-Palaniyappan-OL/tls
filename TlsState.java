@@ -39,57 +39,6 @@ public class TlsState extends X25519 {
         }
     }
 
-    public int generateClientHello() {
-        buffer.clear();
-        int len = 0;
-
-        buffer.put((byte) 0x16);
-        len += 1;
-        buffer.putShort((short) 0x0301);
-        len += 2;
-        buffer.putShort((short) 0x00f8);
-        len += 2;
-
-        buffer.putShort((short) 0x0100);
-        len += 2;
-        buffer.putShort((short) 0x00f4);
-        len += 2;
-        buffer.putShort((short) 0x0303);
-        len += 2;
-
-        byte[] b = new byte[32];
-        new Random().nextBytes(b);
-        buffer.put(ByteBuffer.wrap(b));
-        len += 32;
-
-        // session id length
-        buffer.put((byte) 0x20);
-        len += 1;
-        buffer.put(ByteBuffer.wrap(this.sessionId));
-        len += 32;
-
-        // cipher protocols
-        buffer.putShort((short) 0x0002);
-        len += 2;
-        buffer.putShort((short) 0x1302);
-        len += 2;
-
-        // compression method
-        buffer.putShort((short) 0x0100);
-        len += 2;
-
-        buffer.putShort((short) 0x0000);
-        len += 2;
-
-        // updating length record
-        buffer.putShort(3, (short) len);
-        // updating length handshake header
-        buffer.putShort(7, (short) (len - 4));
-
-        buffer.rewind();
-        return len;
-    }
-
     public int recordHeader(ByteBuffer buf, Function<ByteBuffer, Integer> header) {
         int len = 0;
         buf.put((byte) 0x16);
@@ -98,8 +47,9 @@ public class TlsState extends X25519 {
         len += 2;
         int pos = buf.position();
         buf.putShort((short) 0x0000);
+        len += 2;
         int headerLen = header.apply(buf);
-        buf.putShort(pos, (short) (len - 3 + headerLen));
+        buf.putShort(pos, (short) (headerLen));
         return len + headerLen;
     }
 
