@@ -1,6 +1,6 @@
-import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.security.*;
+import java.util.Arrays;
 import java.util.Random;
 import java.util.function.Function;
 
@@ -40,14 +40,18 @@ public class TlsState extends X25519 {
     }
 
     public void readResponseBuffer() throws Exception {
+        System.out.println(Arrays.toString(getPublicKey()));
+        System.out.println(Arrays.toString(getPrivateKey()));
         this.buffer.flip();
         System.out.println(buffer);
 
         this.buffer.position(this.buffer.limit() - 46);
         System.out.println(this.buffer);
-        setOthersPublicKey(this.buffer);
-        deriveSharedKey(getOthersPublicKey());
-        System.out.println("Derived : " + getDerivedKey());
+        byte[] pub = new byte[46];
+        this.buffer.get(pub);
+        setOthersPublicKey(pub);
+        deriveSharedKey();
+        System.out.println("Derived : " + Arrays.toString(getDerivedKey()));
         this.buffer.rewind();
     }
 

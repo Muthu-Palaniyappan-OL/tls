@@ -12,7 +12,7 @@ public class X25519 {
     private byte[] deriveSharedKey;
 
     X25519() throws NoSuchAlgorithmException {
-        final var kp = KeyPairGenerator.getInstance("X25519").genKeyPair();
+        final var kp = KeyPairGenerator.getInstance("X25519").generateKeyPair();
         privateKey = kp.getPrivate();
         publicKey = kp.getPublic();
         privateKeyBytes = kp.getPrivate().getEncoded();
