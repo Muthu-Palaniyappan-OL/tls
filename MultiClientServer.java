@@ -26,6 +26,7 @@ public class MultiClientServer {
                     if (client == null)
                         continue;
                     map.put(client.getRemoteAddress().toString(), new TlsState());
+                    map.get(client.getRemoteAddress().toString()).setSide("Server");
                     client.configureBlocking(false);
                     client.register(selector, SelectionKey.OP_READ);
                     System.out.println("New Connection: " + client.getRemoteAddress());
@@ -41,7 +42,7 @@ public class MultiClientServer {
                         if (readBytes == -1) {
                             continue;
                         }
-                        map.get(remoteAddr).constructResponseBuffer(readBytes);
+                        map.get(remoteAddr).readResponseBuffer();
                         key.interestOps(SelectionKey.OP_WRITE);
                     } catch (Exception e) {
                         map.remove(remoteAddr);
@@ -55,6 +56,7 @@ public class MultiClientServer {
                         var remoteAddr = client.getRemoteAddress().toString();
                         try {
                             ByteBuffer b = map.get(remoteAddr).buffer;
+                            map.get(remoteAddr).constructResponseBuffer();
                             client.write(ByteBuffer.wrap(b.array(), 0, map.get(remoteAddr).bufferLength + 4));
                             client.write(b);
                             key.interestOps(SelectionKey.OP_READ);

@@ -1,3 +1,4 @@
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.security.*;
 import java.util.Random;
@@ -8,11 +9,13 @@ public class TlsState extends X25519 {
     private byte[] random = new byte[32];
     ByteBuffer buffer = ByteBuffer.allocate(16000);
     int bufferLength = 0;
-    X25519 crypt = new X25519();
-    int state = 0;
+    private int state = 0;
+    private int side = 0;
     /*
      * state = 0 => Not Helloed
      * state = 1 => can send Application Data
+     * side = 0 => client
+     * side = 1 => server
      */
 
     TlsState() throws NoSuchAlgorithmException {
@@ -25,10 +28,36 @@ public class TlsState extends X25519 {
         return this.sessionId;
     }
 
-    public void constructResponseBuffer(int bufferLength) {
+    public String getSide() {
+        return (this.side == 0 ? "Client" : "Server");
+    }
+
+    public void setSide(String str) {
+        if (str == "Server")
+            this.side = 1;
+        else
+            this.side = 0;
+    }
+
+    public void readResponseBuffer() throws Exception {
+        this.buffer.flip();
+        System.out.println(buffer);
+
+        this.buffer.position(this.buffer.limit() - 46);
+        System.out.println(this.buffer);
+        setOthersPublicKey(this.buffer);
+        deriveSharedKey(getOthersPublicKey());
+        System.out.println("Derived : " + getDerivedKey());
+        this.buffer.rewind();
+    }
+
+    public int constructResponseBuffer() {
         this.buffer.clear();
-        if (this.state == 0) {
-            int size = this.serverHandshakeRecordHeader(this.buffer, b2 -> {
+        int len = 0;
+
+        // Server Hello
+        if (this.state == 0 && this.side == 1) {
+            len = this.serverHandshakeRecordHeader(this.buffer, b2 -> {
                 return this.serverHandshakeHeader(b2, b1 -> {
                     return this.extensions(b1, b -> {
                         return this.serverTls13version(b);
@@ -38,11 +67,26 @@ public class TlsState extends X25519 {
                 });
             });
             this.state = 1;
-            this.bufferLength = size;
-        } else {
-            ;
+            this.bufferLength = len;
         }
+
+        // Client Hello
+        else if (this.state == 0 && this.side == 0) {
+            len = this.clientHandshakeRecordHeader(this.buffer, b2 -> {
+                return this.clientHandshakeHeader(b2, b1 -> {
+                    return this.extensions(b1, b -> {
+                        return this.clientTls13version(b);
+                    }, b -> {
+                        return this.clientKeyShare(b);
+                    });
+                });
+            });
+            this.state = 1;
+            this.bufferLength = len;
+        }
+
         this.buffer.rewind();
+        return len;
     }
 
     public void printBuffer(int size) {
@@ -156,7 +200,7 @@ public class TlsState extends X25519 {
     }
 
     public int clientKeyShare(ByteBuffer buf) {
-        int publicKeyLen = crypt.getPublicKey().length;
+        int publicKeyLen = getPublicKey().length;
         int len = 0;
         buf.putShort((short) 0x0033);
         len += 2;
@@ -168,12 +212,12 @@ public class TlsState extends X25519 {
         len += 2;
         buf.putShort((short) (publicKeyLen));
         len += 2;
-        buf.put(crypt.getPublicKey());
+        buf.put(getPublicKey());
         return len + publicKeyLen;
     }
 
     public int serverKeyShare(ByteBuffer buf) {
-        int publicKeyLen = crypt.getPublicKey().length;
+        int publicKeyLen = getPublicKey().length;
         int len = 0;
         buf.putShort((short) 0x0033);
         len += 2;
@@ -183,7 +227,7 @@ public class TlsState extends X25519 {
         len += 2;
         buf.putShort((short) (publicKeyLen));
         len += 2;
-        buf.put(crypt.getPublicKey());
+        buf.put(getPublicKey());
         return len + publicKeyLen;
     }
 

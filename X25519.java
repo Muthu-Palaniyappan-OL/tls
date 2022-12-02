@@ -4,38 +4,54 @@ import javax.crypto.*;
 import javax.crypto.spec.*;
 
 public class X25519 {
-    private KeyPair kp;
-    private byte[] othersPubKey;
-    private byte[] publicKey;
+    private PrivateKey privateKey;
+    private PublicKey publicKey;
+    private byte[] privateKeyBytes;
+    private byte[] publicKeyBytes;
+    private byte[] otherPublicKey;
     private byte[] deriveSharedKey;
 
     X25519() throws NoSuchAlgorithmException {
-        kp = KeyPairGenerator.getInstance("X25519").generateKeyPair();
-        this.publicKey = kp.getPublic().getEncoded();
+        final var kp = KeyPairGenerator.getInstance("X25519").genKeyPair();
+        privateKey = kp.getPrivate();
+        publicKey = kp.getPublic();
+        privateKeyBytes = kp.getPrivate().getEncoded();
+        publicKeyBytes = kp.getPublic().getEncoded();
     }
 
-    public void deriveSharedKey(byte[] othersPublicKey)
-            throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException {
-        this.othersPubKey = othersPublicKey;
-        final var kf = KeyFactory.getInstance("X25519");
-        final var keyspec = new X509EncodedKeySpec(othersPublicKey);
-        var othersPubKey = kf.generatePublic(keyspec);
+    public byte[] deriveSharedKey()
+            throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, InvalidKeySpecException {
         var ka = KeyAgreement.getInstance("X25519");
-        ka.init(kp.getPrivate());
-        ka.doPhase(othersPubKey, true);
+        ka.init(privateKey);
+        ka.doPhase(KeyFactory.getInstance("X25519").generatePublic(new X509EncodedKeySpec(otherPublicKey)), true);
         this.deriveSharedKey = ka.generateSecret();
+        return this.deriveSharedKey;
     }
 
     public byte[] getPublicKey() {
-        return this.publicKey;
+        return this.publicKeyBytes;
+    }
+
+    public byte[] getPrivateKey() {
+        return this.privateKeyBytes;
     }
 
     public byte[] getOthersPublicKey() {
-        return this.othersPubKey;
+        return this.otherPublicKey;
+    }
+
+    public void setOthersPublicKey(byte[] byt) {
+        this.otherPublicKey = byt;
+    }
+
+    public byte[] getDerivedKey() {
+        return this.deriveSharedKey;
     }
 
     public byte[] encrypt(byte[] data) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException,
             IllegalBlockSizeException, BadPaddingException {
+        if (deriveSharedKey == null)
+            return null;
         var secretKeySpec = new SecretKeySpec(deriveSharedKey, "AES");
         var cipher = Cipher.getInstance("AES");
         cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec);
@@ -44,6 +60,8 @@ public class X25519 {
 
     public byte[] decrypt(byte[] data) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException,
             IllegalBlockSizeException, BadPaddingException {
+        if (deriveSharedKey == null)
+            return null;
         var secretKeySpec = new SecretKeySpec(deriveSharedKey, "AES");
         var cipher = Cipher.getInstance("AES");
         cipher.init(Cipher.DECRYPT_MODE, secretKeySpec);

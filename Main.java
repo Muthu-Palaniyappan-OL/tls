@@ -9,26 +9,10 @@ public class Main {
 
     var t = new TlsState();
     t.buffer.clear();
-
-    int size = t.clientHandshakeRecordHeader(t.buffer, b2 -> {
-      return t.clientHandshakeHeader(b2, b1 -> {
-        return t.extensions(b1, b -> {
-          return t.clientTls13version(b);
-        }, b -> {
-          return t.clientKeyShare(b);
-        });
-      });
-    });
-
-    // t.printBuffer(size);
-    System.out.println(size);
+    var size = t.constructResponseBuffer();
     sock.write(ByteBuffer.wrap(t.buffer.array(), 0, size));
-
     t.buffer.clear();
     sock.read(t.buffer);
-
-    t.buffer.flip();
-
-    System.out.println(t.buffer.get());
+    t.readResponseBuffer();
   }
 }
