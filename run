@@ -6,7 +6,7 @@ then
     exit
 fi
 
-javac *.java
+javac -Xlint *.java
 
 if [[ $1 = "Server" ]]
 then

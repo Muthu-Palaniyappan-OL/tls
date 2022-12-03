@@ -11,9 +11,14 @@ public class Main {
     t.buffer.clear();
     var size = t.constructResponseBuffer();
     sock.write(ByteBuffer.wrap(t.buffer.array(), 0, size));
-    t.buffer.clear();
-    sock.read(t.buffer);
-    t.buffer.flip();
-    t.readResponseBuffer();
+    while (true) {
+      t.buffer.clear();
+      sock.read(t.buffer);
+      t.buffer.flip();
+      t.readResponseBuffer();
+      t.buffer.clear();
+      size = t.constructResponseBuffer();
+      sock.write(ByteBuffer.wrap(t.buffer.array(), 0, size));
+    }
   }
 }

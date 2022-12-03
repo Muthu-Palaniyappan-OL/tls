@@ -17,7 +17,7 @@ public class MultiClientServer {
             selector.select();
             var selectedKeys = selector.selectedKeys().iterator();
             while (selectedKeys.hasNext()) {
-                var key = (SelectionKey) selectedKeys.next();
+                SelectionKey key = selectedKeys.next();
                 selectedKeys.remove();
 
                 // New Client
@@ -38,6 +38,7 @@ public class MultiClientServer {
                     var remoteAddr = client.getRemoteAddress().toString();
                     try {
                         ByteBuffer b = map.get(remoteAddr).buffer;
+                        b.clear();
                         var readBytes = client.read(b);
                         if (readBytes == -1) {
                             continue;
@@ -57,11 +58,10 @@ public class MultiClientServer {
                         var remoteAddr = client.getRemoteAddress().toString();
                         try {
                             ByteBuffer b = map.get(remoteAddr).buffer;
+                            b.clear();
                             map.get(remoteAddr).constructResponseBuffer();
                             client.write(ByteBuffer.wrap(b.array(), 0, map.get(remoteAddr).bufferLength));
-                            client.write(b);
                             key.interestOps(SelectionKey.OP_READ);
-                            b.clear();
                         } catch (Exception e) {
                             map.remove(remoteAddr);
                             client.close();

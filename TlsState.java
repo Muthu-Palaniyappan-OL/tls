@@ -2,7 +2,12 @@ import java.nio.ByteBuffer;
 import java.security.*;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.function.Function;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 
 public class TlsState extends X25519 {
     private byte[] sessionId = new byte[32];
@@ -11,9 +16,15 @@ public class TlsState extends X25519 {
     int bufferLength = 0;
     private int state = 0;
     private int side = 0;
+    private static Scanner scn = new Scanner(System.in);
+
     /*
-     * state = 0 => Not Helloed
-     * state = 1 => can send Application Data
+     * client state = 0 => Not Hello So Hello
+     * client state = 1 => Need to Read And Derived
+     * client state = 2 => Ready for Application data
+     * server state = 0 => Need to Read and derive
+     * server state = 1 => Not Hello So Hello
+     * server state = 2 => Ready for application data
      * side = 0 => client
      * side = 1 => server
      */
@@ -40,21 +51,29 @@ public class TlsState extends X25519 {
     }
 
     public void readResponseBuffer() throws Exception {
-        System.out.println(Arrays.toString(getPublicKey()));
-        System.out.println(Arrays.toString(getPrivateKey()));
-        System.out.println(buffer);
-
-        if (this.getSide() == "Server")
-            this.buffer.position(101);
-        else
+        if (this.side == 0 && this.state == 1) {
             this.buffer.position(95);
-
-        System.out.println(this.buffer);
-        byte[] pub = new byte[46];
-        this.buffer.get(pub);
-        setOthersPublicKey(pub);
-        deriveSharedKey();
-        System.out.println("Derived : " + Arrays.toString(getDerivedKey()));
+            byte[] pub = new byte[46];
+            this.buffer.get(pub);
+            setOthersPublicKey(pub);
+            deriveSharedKey();
+            this.state++;
+        } else if (this.side == 1 && this.state == 0) {
+            this.buffer.position(101);
+            byte[] pub = new byte[46];
+            this.buffer.get(pub);
+            setOthersPublicKey(pub);
+            deriveSharedKey();
+            this.state++;
+        } else if (this.state == 2) {
+            this.buffer.position(3);
+            short datalen = this.buffer.getShort();
+            byte[] data = new byte[datalen];
+            this.buffer.get(data);
+            System.out.println(Arrays.toString(data));
+            String str = new String(decrypt(data));
+            System.out.println("Data Sent: " + str);
+        }
         this.buffer.rewind();
     }
 
@@ -62,18 +81,16 @@ public class TlsState extends X25519 {
         this.buffer.clear();
         int len = 0;
 
+        System.out.println("State Now: " + state);
+
         // Server Hello
-        if (this.state == 0 && this.side == 1) {
+        if (this.state == 1 && this.side == 1) {
             len = this.serverHandshakeRecordHeader(this.buffer, b2 -> {
                 return this.serverHandshakeHeader(b2, b1 -> {
-                    return this.extensions(b1, b -> {
-                        return this.serverTls13version(b);
-                    }, b -> {
-                        return this.serverKeyShare(b);
-                    });
+                    return this.extensions(b1, this::serverTls13version, this::serverKeyShare);
                 });
             });
-            this.state = 1;
+            this.state++;
             this.bufferLength = len;
         }
 
@@ -81,14 +98,24 @@ public class TlsState extends X25519 {
         else if (this.state == 0 && this.side == 0) {
             len = this.clientHandshakeRecordHeader(this.buffer, b2 -> {
                 return this.clientHandshakeHeader(b2, b1 -> {
-                    return this.extensions(b1, b -> {
-                        return this.clientTls13version(b);
-                    }, b -> {
-                        return this.clientKeyShare(b);
-                    });
+                    return this.extensions(b1, this::clientTls13version, this::clientKeyShare);
                 });
             });
-            this.state = 1;
+            this.state++;
+            this.bufferLength = len;
+        }
+
+        // Server Data
+        // Client Data
+        else if (this.state == 2) {
+            len = this.applicationDataRecordHeader(this.buffer, t -> {
+                try {
+                    return applicationDataBody(t);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return 0;
+                }
+            });
             this.bufferLength = len;
         }
 
@@ -107,6 +134,20 @@ public class TlsState extends X25519 {
         buf.put((byte) 0x16);
         len += 1;
         buf.putShort((short) 0x0301);
+        len += 2;
+        int pos = buf.position();
+        buf.putShort((short) 0x0000);
+        len += 2;
+        int headerLen = header.apply(buf);
+        buf.putShort(pos, (short) (headerLen));
+        return len + headerLen;
+    }
+
+    public int applicationDataRecordHeader(ByteBuffer buf, Function<ByteBuffer, Integer> header) {
+        int len = 0;
+        buf.put((byte) 0x17);
+        len += 1;
+        buf.putShort((short) 0x0303);
         len += 2;
         int pos = buf.position();
         buf.putShort((short) 0x0000);
@@ -248,5 +289,17 @@ public class TlsState extends X25519 {
         }
         buf.putShort(pos, (short) extensionLen);
         return extensionLen + 2;
+    }
+
+    public int applicationDataBody(ByteBuffer buf)
+            throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException,
+            IllegalBlockSizeException, BadPaddingException {
+        int len = 0;
+        System.out.print("Enter Message to be sent: ");
+        String str = scn.next();
+        var data = encrypt(str.getBytes());
+        len += data.length;
+        buf.put(data);
+        return len;
     }
 }
