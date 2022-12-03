@@ -1,14 +1,11 @@
 import java.security.*;
 import java.security.spec.*;
 import java.util.Arrays;
-import java.util.Base64;
-
 import javax.crypto.*;
 import javax.crypto.spec.*;
 
 class X25519 {
     private PrivateKey privateKey;
-    private PublicKey publicKey;
     private byte[] privateKeyBytes;
     private byte[] publicKeyBytes;
     private byte[] otherPublicKey;
@@ -17,7 +14,6 @@ class X25519 {
     X25519() throws NoSuchAlgorithmException {
         final var kp = KeyPairGenerator.getInstance("X25519").genKeyPair();
         privateKey = kp.getPrivate();
-        publicKey = kp.getPublic();
         privateKeyBytes = kp.getPrivate().getEncoded();
         publicKeyBytes = kp.getPublic().getEncoded();
     }
