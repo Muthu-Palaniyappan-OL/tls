@@ -42,10 +42,13 @@ public class TlsState extends X25519 {
     public void readResponseBuffer() throws Exception {
         System.out.println(Arrays.toString(getPublicKey()));
         System.out.println(Arrays.toString(getPrivateKey()));
-        this.buffer.flip();
         System.out.println(buffer);
 
-        this.buffer.position(this.buffer.limit() - 46);
+        if (this.getSide() == "Server")
+            this.buffer.position(101);
+        else
+            this.buffer.position(95);
+
         System.out.println(this.buffer);
         byte[] pub = new byte[46];
         this.buffer.get(pub);
@@ -162,10 +165,10 @@ public class TlsState extends X25519 {
         len += 2;
         buf.put(random);
         len += 32;
-        buf.put((byte) 0x20);
+        buf.put((byte) sessionId.length);
         len += 1;
         buf.put(sessionId);
-        len += 32;
+        len += sessionId.length;
         buf.putShort((short) 0x0002);
         len += 2;
         buf.putShort((short) 0x1302);
@@ -189,10 +192,10 @@ public class TlsState extends X25519 {
         len += 2;
         buf.put(random);
         len += 32;
-        buf.put((byte) 0x20);
+        buf.put((byte) sessionId.length);
         len += 1;
         buf.put(sessionId);
-        len += 32;
+        len += sessionId.length;
         buf.putShort((short) 0x1302);
         len += 2;
         buf.put((byte) 0x00);

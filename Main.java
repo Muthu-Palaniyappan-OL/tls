@@ -13,6 +13,7 @@ public class Main {
     sock.write(ByteBuffer.wrap(t.buffer.array(), 0, size));
     t.buffer.clear();
     sock.read(t.buffer);
+    t.buffer.flip();
     t.readResponseBuffer();
   }
 }

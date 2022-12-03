@@ -42,6 +42,7 @@ public class MultiClientServer {
                         if (readBytes == -1) {
                             continue;
                         }
+                        b.flip();
                         map.get(remoteAddr).readResponseBuffer();
                         key.interestOps(SelectionKey.OP_WRITE);
                     } catch (Exception e) {
@@ -57,7 +58,7 @@ public class MultiClientServer {
                         try {
                             ByteBuffer b = map.get(remoteAddr).buffer;
                             map.get(remoteAddr).constructResponseBuffer();
-                            client.write(ByteBuffer.wrap(b.array(), 0, map.get(remoteAddr).bufferLength + 4));
+                            client.write(ByteBuffer.wrap(b.array(), 0, map.get(remoteAddr).bufferLength));
                             client.write(b);
                             key.interestOps(SelectionKey.OP_READ);
                             b.clear();

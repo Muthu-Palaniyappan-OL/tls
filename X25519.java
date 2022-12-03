@@ -1,9 +1,11 @@
 import java.security.*;
 import java.security.spec.*;
+import java.util.Arrays;
+
 import javax.crypto.*;
 import javax.crypto.spec.*;
 
-public class X25519 {
+class X25519 {
     private PrivateKey privateKey;
     private PublicKey publicKey;
     private byte[] privateKeyBytes;
@@ -12,7 +14,7 @@ public class X25519 {
     private byte[] deriveSharedKey;
 
     X25519() throws NoSuchAlgorithmException {
-        final var kp = KeyPairGenerator.getInstance("X25519").generateKeyPair();
+        final var kp = KeyPairGenerator.getInstance("X25519").genKeyPair();
         privateKey = kp.getPrivate();
         publicKey = kp.getPublic();
         privateKeyBytes = kp.getPrivate().getEncoded();
@@ -23,6 +25,7 @@ public class X25519 {
             throws NoSuchAlgorithmException, InvalidKeyException, IllegalStateException, InvalidKeySpecException {
         var ka = KeyAgreement.getInstance("X25519");
         ka.init(privateKey);
+        System.out.println("Others Public Key: " + Arrays.toString(otherPublicKey));
         ka.doPhase(KeyFactory.getInstance("X25519").generatePublic(new X509EncodedKeySpec(otherPublicKey)), true);
         this.deriveSharedKey = ka.generateSecret();
         return this.deriveSharedKey;
